@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Notas y Eventos</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#1a1d28; --panel2:#222636;
+    --line:#2e3346; --txt:#e8eaf2; --mut:#8b90a8;
+    --acc:#f0a500; --acc2:#ffc940; --ok:#2ecc71; --del:#e74c3c;
+    --blue:#3d7dff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);padding:16px;max-width:1100px;margin:0 auto}
+  h1{font-size:1.5rem;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+  h1 .dot{width:14px;height:14px;border-radius:50%;background:var(--acc)}
+  .sub{color:var(--mut);font-size:.9rem;margin-bottom:20px}
+
+  /* Pantalla de activación */
+  #lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px}
+  .lockbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:32px;max-width:380px;width:100%;text-align:center}
+  .lockbox h2{margin-bottom:8px}
+  .lockbox p{color:var(--mut);font-size:.9rem;margin-bottom:20px}
+  .lockbox input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);text-align:center;font-size:1.1rem;letter-spacing:2px;margin-bottom:12px}
+  .err{color:var(--del);font-size:.85rem;height:18px;margin-bottom:8px}
+  .prox{background:var(--panel2);border:1px solid var(--acc);border-radius:12px;padding:14px;margin-bottom:18px;text-align:left}
+  .prox .lbl{color:var(--acc2);font-size:.72rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+  .prox .mot{font-weight:600;font-size:1rem;margin-bottom:8px}
+  .prox .f{font-size:.85rem;color:var(--txt);margin-top:3px}
+  .prox .f b{color:var(--acc2)}
+  .prox.vacio{border-color:var(--line);color:var(--mut);font-size:.85rem;text-align:center}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+  .card h3{font-size:1rem;margin-bottom:14px;color:var(--acc2)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  label{display:block;font-size:.8rem;color:var(--mut);margin-bottom:5px}
+  input,textarea,select{width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:.95rem;font-family:inherit}
+  textarea{resize:vertical;min-height:60px}
+  .full{grid-column:1/-1}
+  .clase-row{display:flex;gap:8px}
+  .clase-row select{flex:1}
+
+  button{cursor:pointer;border:none;border-radius:9px;padding:10px 16px;font-size:.9rem;font-weight:600;font-family:inherit}
+  .btn-acc{background:var(--acc);color:#1a1200}
+  .btn-acc:hover{background:var(--acc2)}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
+  .btn-ghost:hover{border-color:var(--acc)}
+  .btn-blue{background:var(--blue);color:#fff}
+  .btn-ok{background:var(--ok);color:#04220f}
+  .btn-del{background:transparent;color:var(--del);border:1px solid var(--del)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .toolbar .spacer{flex:1}
+
+  .nota{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;display:flex;gap:12px}
+  .nota.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+  .chk{margin-top:3px}
+  .chk input{width:20px;height:20px;cursor:pointer}
+  .nota-body{flex:1}
+  .nota-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+  .nota-motivo{font-weight:600;font-size:1.05rem}
+  .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);color:var(--acc2);font-size:.75rem;padding:3px 10px;border-radius:20px;white-space:nowrap}
+  .meta{display:flex;gap:18px;flex-wrap:wrap;color:var(--mut);font-size:.82rem;margin-bottom:10px}
+  .meta b{color:var(--txt);font-weight:600}
+  .nota-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .nota-actions button{padding:7px 12px;font-size:.82rem}
+
+  .empty{text-align:center;color:var(--mut);padding:40px 20px}
+
+  /* Historial */
+  details summary{cursor:pointer;font-weight:600;color:var(--acc2);padding:6px 0;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details summary::before{content:'▸ ';color:var(--acc)}
+  details[open] summary::before{content:'▾ '}
+  .hist-item{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px;opacity:.92}
+  .hist-item .done{color:var(--ok);font-size:.78rem;font-weight:600}
+
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+
+  /* Impresión */
+  @media print{
+    body{background:#fff;color:#000;max-width:100%}
+    #lock,.toolbar,.card,.nota-actions,.chk,.no-print{display:none!important}
+    h1 .dot{background:#000}
+    .nota{border:1px solid #999;page-break-inside:avoid;display:block}
+    .tag{border-color:#999;color:#000}
+    .meta,.meta b{color:#000}
+    .print-only{display:block!important}
+  }
+  .print-only{display:none}
+</style>
+</head>
+<body>
+
+<!-- ACTIVACIÓN -->
+<div id="lock">
+  <div class="lockbox">
+    <h2>🔒 Mis Notas y Eventos</h2>
+    <div id="proximo"></div>
+    <p>Introduce tu código de activación para acceder.</p>
+    <input id="codeInput" placeholder="CÓDIGO" autocomplete="off">
+    <div class="err" id="codeErr"></div>
+    <button class="btn-acc" style="width:100%" onclick="activar()">Activar</button>
+  </div>
+</div>
+
+<h1><span class="dot"></span> Mis Notas y Eventos</h1>
+<div class="sub">Anota lo que tienes que recordar, márcalo, imprímelo y archívalo al finalizar.</div>
+
+<div class="print-only" style="margin-bottom:14px;font-weight:600">Listado de notas seleccionadas</div>
+
+<!-- FORMULARIO -->
+<div class="card no-print" id="formCard">
+  <h3 id="formTitle">➕ Nueva nota</h3>
+  <div class="grid">
+    <div class="full">
+      <label>NOTA — motivo de lo que tengo que recordar</label>
+      <textarea id="fMotivo" placeholder="Ej: Llamar al proveedor para confirmar pedido..."></textarea>
+    </div>
+    <div>
+      <label>FECHA — día en que se hace la anotación</label>
+      <input type="date" id="fAnotacion">
+    </div>
+    <div>
+      <label>FECHA — día en que se realiza / comienza el evento</label>
+      <input type="date" id="fEvento">
+    </div>
+    <div>
+      <label>FECHA — día en que finaliza el evento</label>
+      <input type="date" id="fFin">
+    </div>
+    <div class="full">
+      <label>CLASE DE EVENTO — editable</label>
+      <div class="clase-row">
+        <select id="fClaseSel"></select>
+        <button class="btn-ghost" onclick="addClase()" title="Añadir nueva clase">+ Nueva</button>
+      </div>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn-acc" onclick="guardar()" id="saveBtn">Guardar nota</button>
+    <button class="btn-ghost" onclick="cancelarEdicion()" id="cancelBtn" style="display:none">Cancelar</button>
+  </div>
+</div>
+
+<!-- BARRA -->
+<div class="toolbar no-print">
+  <button class="btn-ghost" onclick="toggleAll()">☑ Seleccionar todo</button>
+  <button class="btn-ghost" onclick="clearSel()">Quitar selección</button>
+  <label style="margin:0 0 0 6px;color:var(--mut)">Ordenar por:</label>
+  <select id="orden" onchange="render()" style="width:auto;min-width:190px">
+    <option value="fEvento">Fecha de evento</option>
+    <option value="fFin">Fecha de finalización</option>
+    <option value="fAnotacion">Fecha de anotación</option>
+    <option value="clase">Clase de evento</option>
+  </select>
+  <div class="spacer"></div>
+  <button class="btn-ghost" onclick="exportar()" title="Guardar copia de seguridad">💾 Copia</button>
+  <button class="btn-ghost" onclick="document.getElementById('fileImport').click()" title="Restaurar copia">📂 Restaurar</button>
+  <input type="file" id="fileImport" accept=".json" style="display:none" onchange="importar(event)">
+  <span style="color:var(--mut);font-size:.85rem" id="selCount">0 seleccionadas</span>
+  <button class="btn-blue" onclick="imprimir()">🖨 Imprimir selección</button>
+</div>
+
+<!-- LISTA ACTIVA -->
+<div id="lista"></div>
+
+<!-- HISTORIAL -->
+<div class="card no-print" id="histCard" style="display:none">
+  <details>
+    <summary id="histTitle">📁 Historial de eventos finalizados</summary>
+    <div id="historial"></div>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn-blue" onclick="imprimirHistorial()">🖨 Imprimir historial</button>
+      <button class="btn-del" onclick="vaciarHistorial()">Vaciar historial</button>
+    </div>
+  </details>
+</div>
+
+<script>
+const CODIGO = "vbg08051963";
+const KEY = "blocNotas_v1";
+
+let store = { notas:[], historial:[], clases:["Personal","Trabajo","Cita","Recordatorio","Pago","Reunión"] };
+let editId = null;
+
+function load(){
+  const raw = localStorage.getItem(KEY);
+  if(raw){ try{ store = {...store, ...JSON.parse(raw)}; }catch(e){} }
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(store)); }
+
+// ---- Activación ----
+function activar(){
+  const v = document.getElementById('codeInput').value.trim();
+  if(v === CODIGO){
+    document.getElementById('lock').style.display='none';
+  } else {
+    document.getElementById('codeErr').textContent = "Código incorrecto.";
+  }
+}
+document.getElementById('codeInput').addEventListener('keydown',e=>{if(e.key==='Enter')activar();});
+
+// ---- Clases editables ----
+function renderClases(sel){
+  const s = document.getElementById('fClaseSel');
+  s.innerHTML = store.clases.map(c=>`<option ${c===sel?'selected':''}>${esc(c)}</option>`).join('');
+}
+function addClase(){
+  const n = prompt("Nombre de la nueva clase de evento:");
+  if(n && n.trim()){
+    const t = n.trim();
+    if(!store.clases.includes(t)){ store.clases.push(t); save(); }
+    renderClases(t);
+  }
+}
+
+// ---- Guardar / editar ----
+function guardar(){
+  const motivo = document.getElementById('fMotivo').value.trim();
+  if(!motivo){ alert("Escribe el motivo de la nota."); return; }
+  const obj = {
+    id: editId || Date.now(),
+    motivo,
+    fAnotacion: document.getElementById('fAnotacion').value,
+    fEvento: document.getElementById('fEvento').value,
+    fFin: document.getElementById('fFin').value,
+    clase: document.getElementById('fClaseSel').value,
+    sel:false
+  };
+  if(editId){
+    const i = store.notas.findIndex(n=>n.id===editId);
+    if(i>-1){ obj.sel = store.notas[i].sel; store.notas[i]=obj; }
+    editId=null;
+  } else {
+    store.notas.unshift(obj);
+  }
+  save(); resetForm(); render();
+}
+function editar(id){
+  const n = store.notas.find(n=>n.id===id); if(!n) return;
+  editId = id;
+  document.getElementById('fMotivo').value = n.motivo;
+  document.getElementById('fAnotacion').value = n.fAnotacion;
+  document.getElementById('fEvento').value = n.fEvento;
+  document.getElementById('fFin').value = n.fFin || '';
+  if(!store.clases.includes(n.clase)) store.clases.push(n.clase);
+  renderClases(n.clase);
+  document.getElementById('formTitle').textContent='✏️ Editando nota';
+  document.getElementById('saveBtn').textContent='Guardar cambios';
+  document.getElementById('cancelBtn').style.display='inline-block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function cancelarEdicion(){ editId=null; resetForm(); }
+function resetForm(){
+  document.getElementById('fMotivo').value='';
+  document.getElementById('fAnotacion').value = hoy();
+  document.getElementById('fEvento').value='';
+  document.getElementById('fFin').value='';
+  renderClases(store.clases[0]);
+  document.getElementById('formTitle').textContent='➕ Nueva nota';
+  document.getElementById('saveBtn').textContent='Guardar nota';
+  document.getElementById('cancelBtn').style.display='none';
+}
+
+// ---- Finalizar ----
+function finalizar(id){
+  const i = store.notas.findIndex(n=>n.id===id); if(i<0) return;
+  if(!confirm("¿Finalizar este evento? Pasará al historial.")) return;
+  const n = store.notas[i];
+  n.finalizado = hoy();
+  store.historial.unshift(n);
+  store.notas.splice(i,1);
+  save(); render();
+}
+function borrar(id){
+  if(!confirm("¿Borrar esta nota?")) return;
+  store.notas = store.notas.filter(n=>n.id!==id);
+  save(); render();
+}
+
+// ---- Selección ----
+function toggleSel(id){
+  const n = store.notas.find(n=>n.id===id); if(n){ n.sel=!n.sel; save(); render(); }
+}
+function toggleAll(){
+  const all = store.notas.every(n=>n.sel);
+  store.notas.forEach(n=>n.sel=!all); save(); render();
+}
+function clearSel(){ store.notas.forEach(n=>n.sel=false); save(); render(); }
+
+// ---- Impresión ----
+function imprimir(){
+  if(!store.notas.some(n=>n.sel)){ alert("Selecciona al menos una nota para imprimir."); return; }
+  window.print();
+}
+function imprimirHistorial(){
+  if(!store.historial.length){ alert("El historial está vacío."); return; }
+  store.notas.forEach(n=>n.sel=false);
+  // imprimimos historial: marcamos temporalmente mostrando solo historial
+  document.body.classList.add('print-hist');
+  window.print();
+  document.body.classList.remove('print-hist');
+}
+function vaciarHistorial(){
+  if(!confirm("¿Vaciar todo el historial? Esta acción no se puede deshacer.")) return;
+  store.historial=[]; save(); render();
+}
+
+// ---- Copia de seguridad ----
+function exportar(){
+  const data = JSON.stringify(store, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const f = hoy();
+  a.href = url; a.download = `copia-notas-${f}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importar(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!confirm("Restaurar una copia reemplazará TODAS tus notas y el historial actuales. ¿Continuar?")){
+    e.target.value=''; return;
+  }
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!data || !Array.isArray(data.notas)) throw new Error("Formato no válido");
+      store = {...store, ...data};
+      save(); resetForm(); render();
+      alert("✅ Copia restaurada correctamente.");
+    }catch(err){
+      alert("❌ El archivo no es una copia válida.");
+    }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+// ---- Próximo evento (visible antes del código) ----
+function mostrarProximo(){
+  const cont = document.getElementById('proximo');
+  const hoyStr = hoy();
+  // eventos con fecha de inicio, futuros o de hoy, ordenados por fecha de inicio
+  const futuros = store.notas
+    .filter(n=>n.fEvento && n.fEvento >= hoyStr)
+    .sort((a,b)=> a.fEvento < b.fEvento ? -1 : 1);
+  // si no hay futuros, mostramos el más cercano de los que tengan fecha
+  let prox = futuros[0];
+  if(!prox){
+    const conFecha = store.notas.filter(n=>n.fEvento).sort((a,b)=> a.fEvento > b.fEvento ? -1 : 1);
+    prox = conFecha[0];
+  }
+  if(!prox){
+    cont.className='prox vacio';
+    cont.innerHTML='No hay próximos eventos registrados.';
+    return;
+  }
+  cont.className='prox';
+  cont.innerHTML = `
+    <div class="lbl">Próximo evento</div>
+    <div class="mot">${esc(prox.motivo)}</div>
+    <div class="f">Comienza: <b>${fmt(prox.fEvento)}</b></div>
+    <div class="f">Finaliza: <b>${fmt(prox.fFin)}</b></div>`;
+}
+
+// ---- Render ----
+function fmt(d){ if(!d) return '—'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
+function hoy(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function ordenar(arr){
+  const by = document.getElementById('orden') ? document.getElementById('orden').value : 'fEvento';
+  const a = [...arr];
+  a.sort((x,y)=>{
+    let vx = x[by]||'', vy = y[by]||'';
+    if(by==='clase'){ return vx.localeCompare(vy,'es',{sensitivity:'base'}); }
+    // fechas: vacías al final
+    if(!vx && !vy) return 0;
+    if(!vx) return 1;
+    if(!vy) return -1;
+    return vx < vy ? -1 : vx > vy ? 1 : 0;
+  });
+  return a;
+}
+
+function render(){
+  const L = document.getElementById('lista');
+  const notas = ordenar(store.notas);
+  if(!notas.length){
+    L.innerHTML = '<div class="empty">No tienes notas activas. Crea una arriba ☝️</div>';
+  } else {
+    L.innerHTML = notas.map(n=>`
+      <div class="nota ${n.sel?'sel':''}">
+        <div class="chk"><input type="checkbox" ${n.sel?'checked':''} onclick="toggleSel(${n.id})"></div>
+        <div class="nota-body">
+          <div class="nota-top">
+            <div class="nota-motivo">${esc(n.motivo)}</div>
+            <span class="tag">${esc(n.clase)}</span>
+          </div>
+          <div class="meta">
+            <span>Anotación: <b>${fmt(n.fAnotacion)}</b></span>
+            <span>Evento: <b>${fmt(n.fEvento)}</b></span>
+            <span>Finaliza: <b>${fmt(n.fFin)}</b></span>
+          </div>
+          <div class="nota-actions">
+            <button class="btn-ok" onclick="finalizar(${n.id})">✓ Finalizar</button>
+            <button class="btn-ghost" onclick="editar(${n.id})">✏️ Editar</button>
+            <button class="btn-del" onclick="borrar(${n.id})">Borrar</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  // contador
+  const c = store.notas.filter(n=>n.sel).length;
+  document.getElementById('selCount').textContent = c + (c===1?' seleccionada':' seleccionadas');
+
+  // historial
+  const H = document.getElementById('historial');
+  document.getElementById('histCard').style.display = store.historial.length?'block':'none';
+  document.getElementById('histTitle').textContent = `📁 Historial de eventos finalizados (${store.historial.length})`;
+  H.innerHTML = store.historial.map(n=>`
+    <div class="hist-item">
+      <div class="nota-top">
+        <div class="nota-motivo">${esc(n.motivo)}</div>
+        <span class="tag">${esc(n.clase)}</span>
+      </div>
+      <div class="meta">
+        <span>Anotación: <b>${fmt(n.fAnotacion)}</b></span>
+        <span>Evento: <b>${fmt(n.fEvento)}</b></span>
+        <span>Finaliza: <b>${fmt(n.fFin)}</b></span>
+        <span class="done">✓ Finalizado: ${fmt(n.finalizado)}</span>
+      </div>
+    </div>`).join('');
+
+  mostrarProximo();
+}
+
+// ---- Init ----
+load();
+resetForm();
+render();
+mostrarProximo();
+</script>
+</body>
+</html>
